@@ -5,10 +5,9 @@ import random
 from tqdm import tqdm
 from prettytable import PrettyTable
 from termcolor import cprint
-from pptree import Node
+from pptree import Node, print_tree
 import google.generativeai as genai
 from openai import OpenAI
-from pptree import *
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +82,21 @@ def encode_image_to_base64(image_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Helper: map model_info shorthand to the actual OpenAI model name
+# ---------------------------------------------------------------------------
+_MODEL_NAME_MAP = {
+    'gpt-3.5': 'gpt-3.5-turbo',
+    'gpt-4': 'gpt-4',
+    'gpt-4o': 'gpt-4o',
+    'gpt-4o-mini': 'gpt-4o-mini',
+}
+
+
+def _resolve_model_name(model_info: str) -> str:
+    return _MODEL_NAME_MAP.get(model_info, 'gpt-4o-mini')
+
+
+# ---------------------------------------------------------------------------
 # Agent – mirrors the original but adds multi-modal (image) support
 # ---------------------------------------------------------------------------
 class Agent:
@@ -139,10 +153,7 @@ class Agent:
 
             self.messages.append({"role": "user", "content": content})
 
-            if self.model_info == 'gpt-3.5':
-                model_name = "gpt-3.5-turbo"
-            else:
-                model_name = "gpt-4o-mini"
+            model_name = _resolve_model_name(self.model_info)
 
             response = self.client.chat.completions.create(
                 model=model_name,
@@ -172,8 +183,7 @@ class Agent:
 
             temperatures = [0.0]
             responses = {}
-            model_name = ('gpt-3.5-turbo'
-                          if self.model_info == 'gpt-3.5' else 'gpt-4o-mini')
+            model_name = _resolve_model_name(self.model_info)
             for temperature in temperatures:
                 response = self.client.chat.completions.create(
                     model=model_name,
@@ -537,7 +547,8 @@ def process_intermediate_query(clinical_input, model, img_path=None):
         try:
             agent_role = agent_data[0].split('-')[0].split('.')[1].strip().lower()
             description = agent_data[0].split('-')[1].strip().lower()
-        except Exception:
+        except (IndexError, AttributeError):
+            print(f"[WARNING] Could not parse agent {i+1}: {agent_data[0]}")
             continue
 
         inst = (

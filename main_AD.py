@@ -130,7 +130,9 @@ if not os.path.exists(output_dir):
 
 output_path = args.output or os.path.join(output_dir, 'ad_treatment_plan.json')
 # Ensure the output directory exists for custom paths too
-os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+output_parent = os.path.dirname(os.path.abspath(output_path))
+if output_parent:
+    os.makedirs(output_parent, exist_ok=True)
 
 with open(output_path, 'w') as f:
     json.dump(treatment_plan_json, f, indent=4)
